@@ -9,6 +9,9 @@ from urllib2 import URLError, HTTPError
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as ExpectedConditions
+from selenium.webdriver.support.ui import WebDriverWait
 
 def make_driver(url, timeout, user_agent):
 	socket.setdefaulttimeout(timeout)
@@ -33,7 +36,7 @@ def get_gallery_links(driver, url, base_url):
 
 	return gallery_links, len(gallery_links)
 
-def get_image_links(driver, url):
+def get_image_links(driver, url, timeout):
 	driver.get(url)
 	scroll_down(driver)
 	tmp_links = []
@@ -43,7 +46,8 @@ def get_image_links(driver, url):
 	image_links = []
 	for tmp_link in tmp_links:
 		driver.get(tmp_link)
-		a = driver.find_element_by_id("pv_open_original")
+		wait = WebDriverWait(driver, timeout)
+		a = wait.until(ExpectedConditions.presence_of_element_located((By.ID, "pv_open_original")))
 		image_links.append(a.get_attribute("href"))
 	return image_links, len(image_links)
 
@@ -66,13 +70,13 @@ def crawl_url(gallery, base_url, timeout, user_agent):
 		print("crawling gallery '{0}' ({1} of {2})".format(gallery_name, i + 1, gallery_count))
 		if not os.path.exists(gallery_name):
 			os.makedirs(gallery_name)
-		image_links, image_count = get_image_links(driver, gallery_link)
+		image_links, image_count = get_image_links(driver, gallery_link, timeout)
 		print("{0} images found".format(image_count))
 		images_saved = 0
 		images_skipped = 0
 		images_failed = 0
 		for j, image_link in enumerate(image_links):
-			print ("saving image {0} of {1}".format(j + 1, image_count), end='\r'),
+			print ("saving image {0} of {1}{2}".format(j + 1, image_count, ' ' * 20), end='\r'),
 			try:
 				save_image(image_link, gallery_name)
 				images_saved += 1
